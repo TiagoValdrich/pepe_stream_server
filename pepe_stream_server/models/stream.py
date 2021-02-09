@@ -180,7 +180,7 @@ class Stream:
 
         cmd = f"""ffmpeg -i {self.rtsp_address} \
 -an -f segment -segment_format mp4 -segment_time 120 -strftime 1 '{record_path}/{self.stream_name}_%Y-%m-%d_%H-%M-%S.mp4' \
--an -hls_time 5 -hls_list_size 5 -start_number 1 {self.live_path}/playlist.m3u8"""
+-an -y -hls_time 2 -hls_flags delete_segments -hls_list_size 3 -start_number 1 {self.live_path}/playlist.m3u8"""
 
         p = Popen(shlex.split(cmd))
 
