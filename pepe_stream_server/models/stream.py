@@ -5,6 +5,8 @@ from functools import partial
 from subprocess import Popen
 import os
 import signal
+import shlex
+import shutil
 
 
 class Stream:
@@ -49,6 +51,10 @@ class Stream:
             streams.append(s.__dict__ if raw_dict else s)
 
         return streams
+
+    @property
+    def live_path(self):
+        return os.getcwd() + "/live/" + self.stream_name
 
     async def create(self, conn: Connection) -> None:
         loop = get_event_loop()
@@ -164,31 +170,19 @@ class Stream:
             c.close()
 
     async def connect(self, conn: Connection) -> None:
-        path = os.getcwd() + "/live/" + self.stream_name
+        record_path = os.getcwd() + "/record"
 
-        if not os.path.exists(path):
-            os.mkdir(path)
+        if not os.path.exists(self.live_path):
+            os.mkdir(self.live_path)
 
-        p = Popen(
-            [
-                "ffmpeg",
-                "-i",
-                self.rtsp_address,
-                "-y",
-                "-an",
-                "-c:v",
-                "libx264",
-                "-preset:v",
-                "ultrafast",
-                "-hls_time",
-                "5",
-                "-hls_list_size",
-                "5",
-                "-start_number",
-                "1",
-                path + "/playlist.m3u8",
-            ]
-        )
+        if not os.path.exists(record_path):
+            os.mkdir(record_path)
+
+        cmd = f"""ffmpeg -i {self.rtsp_address} \
+-an -f segment -segment_format mp4 -segment_time 120 -strftime 1 '{record_path}/{self.stream_name}_%Y-%m-%d_%H-%M-%S.mp4' \
+-an -hls_time 5 -hls_list_size 5 -start_number 1 {self.live_path}/playlist.m3u8"""
+
+        p = Popen(shlex.split(cmd))
 
         self.is_connected = 1
         self.pid = str(p.pid)
@@ -197,6 +191,9 @@ class Stream:
 
     async def disconnect(self, conn: Connection) -> None:
         os.kill(int(self.pid), signal.SIGTERM)
+
+        if os.path.exists(self.live_path):
+            shutil.rmtree(self.live_path)
 
         self.is_connected = 0
         self.pid = None
