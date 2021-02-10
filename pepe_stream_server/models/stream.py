@@ -147,6 +147,28 @@ class Stream:
             c.close()
 
     @staticmethod
+    async def get_startup_streams(
+        conn: Connection, raw_dict: bool = True
+    ) -> List["Stream"]:
+        loop = get_event_loop()
+        c = conn.cursor()
+
+        try:
+            execute_f = partial(
+                c.execute, "SELECT * FROM streams WHERE start_on_boot = 1"
+            )
+            fetch_all_f = partial(c.fetchall)
+
+            await loop.run_in_executor(None, execute_f)
+            rows = await loop.run_in_executor(None, fetch_all_f)
+
+            streams = Stream.build_from_rows(rows, raw_dict=raw_dict)
+
+            return streams
+        finally:
+            c.close()
+
+    @staticmethod
     async def find_stream_by_name(conn: Connection, stream_name: str) -> "Stream":
         loop = get_event_loop()
         c = conn.cursor()
@@ -178,7 +200,7 @@ class Stream:
         if not os.path.exists(record_path):
             os.mkdir(record_path)
 
-        cmd = f"""ffmpeg -i {self.rtsp_address} \
+        cmd = f"""ffmpeg -loglevel quiet -i {self.rtsp_address} \
 -an -f segment -segment_format mp4 -segment_time 120 -strftime 1 '{record_path}/{self.stream_name}_%Y-%m-%d_%H-%M-%S.mp4' \
 -an -y -hls_time 2 -hls_flags delete_segments -hls_list_size 3 -start_number 1 {self.live_path}/playlist.m3u8"""
 

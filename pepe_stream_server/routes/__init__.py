@@ -30,6 +30,6 @@ Pepe stream server is running...
     return Response(text=pepe_cross)
 
 
-def add_routes_to_app(app: Application):
+def add_routes_to_app(app: Application) -> None:
     app.add_routes(main_routes)
     app.add_routes(streams_routes)
