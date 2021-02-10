@@ -7,7 +7,7 @@ async def authentication(request: Request, handler):
     if request.path and request.path[0] == "/":
         base_path = request.path[1:].split("/")[0]
 
-        if base_path == "live":
+        if not base_path or base_path in ["live", "offer"]:
             return await handler(request)
 
     if "Authorization" in request.headers:
